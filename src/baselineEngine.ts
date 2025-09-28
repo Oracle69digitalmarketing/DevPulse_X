@@ -1,8 +1,14 @@
 import { features } from 'web-features';
 
+/**
+ * Checks if a feature is supported fully across major browsers.
+ */
 export function checkFeature(featureName: string) {
-    const info = features[featureName];
-    if (!info) return { fullySupported: false, browsers: [] };
-    const fullySupported = Object.values(info.supportedBrowsers).every(v => v === true);
-    return { fullySupported, browsers: Object.keys(info.supportedBrowsers).filter(k => !info.supportedBrowsers[k]) };
+    const support = features[featureName];
+    if (!support) {
+        return { fullySupported: false, message: 'Feature not found in Baseline data.' };
+    }
+
+    const fullySupported = Object.values(support).every(v => v === true);
+    return { fullySupported, support };
 }
