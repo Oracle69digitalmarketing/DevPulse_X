@@ -1,0 +1,22 @@
+{
+  "name": "devpulse-x",
+  "version": "0.1.0",
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "start": "code ."
+  },
+  "devDependencies": {
+    "typescript": "^5.2.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0"
+  },
+  "dependencies": {
+    "web-features": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@babel/parser": "^7.25.0"
+  }
+}
