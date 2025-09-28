@@ -1,22 +1,21 @@
 import * as vscode from 'vscode';
 
-export function suggestFix(feature: string): string {
-    // Map unsupported features to Baseline-safe alternatives
-    const map: Record<string, string> = {
-        'navigator.clipboard.readText': 'safeClipboardRead()',
-        'document.pictureInPictureEnabled': 'checkPiP()'
+export function suggestFix(featureName: string) {
+    // Example mapping; can be extended
+    const fixes: Record<string, string> = {
+        'fetch': 'Use axios or check polyfill for fetch',
+        'Array.flat': 'Use flatMap or polyfill for older browsers'
     };
-    return map[feature] || feature;
+    return fixes[featureName] || 'No suggestion available';
 }
 
-// Optional: register code action for quick fix
-export function registerQuickFix(context: vscode.ExtensionContext) {
-    vscode.languages.registerCodeActionsProvider('javascript', {
-        provideCodeActions(document, range) {
-            const fix = new vscode.CodeAction('Replace with Baseline-safe API', vscode.CodeActionKind.QuickFix);
-            fix.edit = new vscode.WorkspaceEdit();
-            fix.edit.replace(document.uri, range, suggestFix(document.getText(range)));
-            return [fix];
+export function suggestFixes(document: vscode.TextDocument) {
+    // Simple example: scan for unsupported features in the document
+    const text = document.getText();
+    const unsupportedFeatures = ['fetch', 'Array.flat']; // replace with dynamic check
+    unsupportedFeatures.forEach(feature => {
+        if (text.includes(feature)) {
+            vscode.window.showInformationMessage(`DevPulse X Suggestion: ${suggestFix(feature)}`);
         }
     });
 }
