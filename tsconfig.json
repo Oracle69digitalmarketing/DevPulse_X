@@ -1,52 +1,24 @@
 {
-  "name": "devpulse-x",
-  "version": "1.0.0",
-  "description": "DevPulse X — The Autonomous Coding Companion for VS Code",
-  "main": "out/extension.js",
-  "scripts": {
-    "compile": "tsc -p .",
-    "bundle-ui": "webpack --config webpack.config.js",
-    "watch": "tsc -watch",
-    "start": "code --extensionDevelopmentPath=."
+  "compilerOptions": {
+    "target": "ES2020",                       // Modern JS output
+    "module": "ESNext",                        // For Webpack bundling & dynamic import
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM"],                 // DOM for React + VS Code Webview
+    "allowJs": true,                           // Allow JS files if needed
+    "checkJs": false,
+    "jsx": "react-jsx",                        // React 18 JSX transform
+    "outDir": "out",                           // Compiled VS Code extension files
+    "rootDir": "src",                          // Source folder
+    "strict": true,                            // Enable strict type checking
+    "esModuleInterop": true,                   // Default import compatibility
+    "skipLibCheck": true,                      // Skip type checks on dependencies
+    "forceConsistentCasingInFileNames": true, // Enforce consistent file naming
+    "sourceMap": true,                         // For debugging
+    "noImplicitAny": true,
+    "resolveJsonModule": true,                 // Import JSON if needed
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "author": "Prince Adewale",
-  "license": "MIT",
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-chartjs-2": "^5.2.0",
-    "chart.js": "^4.5.0",
-    "web-features": "^2.1.0",
-    "vscode": "^1.82.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.2.2",
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
-    "@types/vscode": "^1.82.0",
-    "ts-loader": "^9.4.5",
-    "webpack": "^5.88.2",
-    "webpack-cli": "^5.1.4",
-    "css-loader": "^6.9.4",
-    "style-loader": "^3.3.3"
-  },
-  "engines": {
-    "vscode": "^1.81.0"
-  },
-  "activationEvents": [
-    "onCommand:devpulse:showDashboard",
-    "onCommand:devpulse:autoScaffold"
-  ],
-  "contributes": {
-    "commands": [
-      {
-        "command": "devpulse:showDashboard",
-        "title": "Show DevPulse Dashboard"
-      },
-      {
-        "command": "devpulse:autoScaffold",
-        "title": "Auto-Scaffold Component"
-      }
-    ]
-  }
+  "include": ["src"],
+  "exclude": ["node_modules", "out"]
 }
