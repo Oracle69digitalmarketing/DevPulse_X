@@ -1,22 +1,52 @@
 {
   "name": "devpulse-x",
-  "version": "0.1.0",
-  "main": "./out/extension.js",
+  "version": "1.0.0",
+  "description": "DevPulse X — The Autonomous Coding Companion for VS Code",
+  "main": "out/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "start": "code ."
+    "compile": "tsc -p .",
+    "bundle-ui": "webpack --config webpack.config.js",
+    "watch": "tsc -watch",
+    "start": "code --extensionDevelopmentPath=."
   },
-  "devDependencies": {
-    "typescript": "^5.2.0",
-    "@types/node": "^20.0.0",
-    "@types/vscode": "^1.85.0"
-  },
+  "author": "Prince Adewale",
+  "license": "MIT",
   "dependencies": {
-    "web-features": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@babel/parser": "^7.25.0"
+    "react-chartjs-2": "^5.2.0",
+    "chart.js": "^4.5.0",
+    "web-features": "^2.1.0",
+    "vscode": "^1.82.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@types/vscode": "^1.82.0",
+    "ts-loader": "^9.4.5",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "css-loader": "^6.9.4",
+    "style-loader": "^3.3.3"
+  },
+  "engines": {
+    "vscode": "^1.81.0"
+  },
+  "activationEvents": [
+    "onCommand:devpulse:showDashboard",
+    "onCommand:devpulse:autoScaffold"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "devpulse:showDashboard",
+        "title": "Show DevPulse Dashboard"
+      },
+      {
+        "command": "devpulse:autoScaffold",
+        "title": "Auto-Scaffold Component"
+      }
+    ]
   }
 }
