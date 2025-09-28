@@ -67,7 +67,7 @@ UI Layer: React + TypeScript for extension panels
 
 ## 📦 Installation
 
-git clone https://github.com/yourusername/devpulse-x
+git clone https://github.com/Oracle69digitalmarketing/DevPulse_X
 cd devpulse-x
 npm install
 code .
