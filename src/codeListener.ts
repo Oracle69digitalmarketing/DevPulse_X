@@ -3,19 +3,18 @@ import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import { trackEmotion } from './emotionTracker';
 import { checkFeature } from './baselineEngine';
-import { suggestFix } from './suggestionEngine';
+import { suggestFix, suggestFixes } from './suggestionEngine';
 import { autoScaffold } from './scaffolder';
 import { decorateTooltip } from './ui/tooltipManager';
 
 /**
  * Activates the main code listener for DevPulse X.
- * Tracks typing, checks Baseline features, provides suggestions, and integrates auto-scaffold.
+ * Tracks typing, checks Baseline features, provides inline suggestions, and integrates auto-scaffold.
  */
 export function activateCodeListener(context: vscode.ExtensionContext) {
 
     // Listen for all text changes
     const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
-
         const code = event.document.getText();
 
         // === 1️⃣ Track Emotion & Flow ===
@@ -56,4 +55,6 @@ export function activateCodeListener(context: vscode.ExtensionContext) {
         }
     });
     context.subscriptions.push(scaffoldCmd);
+
+    // === 5️⃣ Optional: Additional commands or listeners can be added here ===
 }
