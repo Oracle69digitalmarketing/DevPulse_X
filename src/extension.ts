@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { listenToCode } from './codeListener';
 import { showDashboard } from './ui/dashboard';
+import { registerQuickFix } from './suggestionEngine';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('DevPulse X activated!');
@@ -8,12 +9,15 @@ export function activate(context: vscode.ExtensionContext) {
     // Start code listener
     listenToCode(context);
 
-    // Register command to open Flow Dashboard
+    // Register Flow Dashboard command
     context.subscriptions.push(
         vscode.commands.registerCommand('devpulse.showDashboard', () => {
             showDashboard(context);
         })
     );
+
+    // Register Quick Fix provider
+    registerQuickFix(context);
 }
 
 export function deactivate() {
