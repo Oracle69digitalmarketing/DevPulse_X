@@ -8,53 +8,76 @@ import { autoScaffold } from './scaffolder';
 import { decorateTooltip } from './ui/tooltipManager';
 
 /**
- * Activates the main code listener for DevPulse X.
- * Tracks typing, checks Baseline features, provides inline suggestions, and integrates auto-scaffold.
+ * Main code listener for DevPulse X.
+ * Handles:
+ *  - Typing activity & emotion tracking
+ *  - Baseline feature compatibility checks
+ *  - Inline fixes + tooltips
+ *  - Auto-scaffolding command
  */
 export function activateCodeListener(context: vscode.ExtensionContext) {
-
-    // Listen for all text changes
+    // === 1️⃣ Listen for text changes in active editor ===
     const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
+        if (event.document.languageId !== 'javascript' && event.document.languageId !== 'typescript' && event.document.languageId !== 'javascriptreact' && event.document.languageId !== 'typescriptreact') {
+            return; // Only run on JS/TS/React code
+        }
+
         const code = event.document.getText();
 
-        // === 1️⃣ Track Emotion & Flow ===
+        // --- Track Emotion & Flow ---
         trackEmotion(event);
 
-        // === 2️⃣ Baseline Feature Checks + Inline Suggestions ===
+        // --- AST Parse + Feature Checks ---
         try {
-            const ast = parse(code, { sourceType: 'module', plugins: ['jsx', 'typescript'] });
+            const ast = parse(code, {
+                sourceType: 'module',
+                plugins: ['jsx', 'typescript']
+            });
+
             traverse(ast, {
                 enter(path) {
-                    if (path.isMemberExpression() || path.isIdentifier()) {
+                    if (path.isIdentifier() || path.isMemberExpression()) {
                         const feature = path.toString();
                         const support = checkFeature(feature);
 
                         if (!support.fullySupported) {
                             const fix = suggestFix(feature);
-                            decorateTooltip(event.document.uri, path.node.loc?.start.line || 0, support, fix);
+                            const line = path.node.loc?.start.line ?? 0;
+
+                            decorateTooltip(
+                                event.document.uri,
+                                line,
+                                support,
+                                fix
+                            );
                         }
                     }
                 }
             });
         } catch (err) {
-            console.error('AST parse error:', err);
+            console.error('⚠️ AST parse error in DevPulse:', err);
         }
 
-        // === 3️⃣ Optional Inline Fix Suggestions ===
+        // --- Suggest Fixes Inline (if available) ---
         suggestFixes(event.document);
     });
 
     context.subscriptions.push(disposable);
 
-    // === 4️⃣ Auto-Scaffold Command ===
+    // === 2️⃣ Auto-Scaffold Command ===
     const scaffoldCmd = vscode.commands.registerCommand('devpulse:autoScaffold', async () => {
-        const componentName = await vscode.window.showInputBox({ prompt: 'Enter component name:' });
-        if (componentName) {
-            autoScaffold(componentName);
-            vscode.window.showInformationMessage(`Auto-scaffold executed for: ${componentName}`);
+        const componentName = await vscode.window.showInputBox({
+            prompt: 'Enter component name',
+            placeHolder: 'MyNewComponent'
+        });
+
+        if (componentName && componentName.trim() !== '') {
+            autoScaffold(componentName.trim());
+            vscode.window.showInformationMessage(`✅ Auto-scaffold created: ${componentName}`);
+        } else {
+            vscode.window.showWarningMessage('❌ Invalid component name.');
         }
     });
-    context.subscriptions.push(scaffoldCmd);
 
-    // === 5️⃣ Optional: Additional commands or listeners can be added here ===
+    context.subscriptions.push(scaffoldCmd);
 }
