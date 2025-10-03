@@ -1,24 +1,26 @@
 {
   "compilerOptions": {
-    "target": "ES2020",                       // Modern JS output
-    "module": "ESNext",                        // For Webpack bundling & dynamic import
+    "target": "ES2020",                       
+    "module": "ESNext",                        
     "moduleResolution": "node",
-    "lib": ["ES2020", "DOM"],                 // DOM for React + VS Code Webview
-    "allowJs": true,                           // Allow JS files if needed
+    "lib": ["ES2020", "DOM"],                 
+    "allowJs": true,                           
     "checkJs": false,
-    "jsx": "react-jsx",                        // React 18 JSX transform
-    "outDir": "out",                           // Compiled VS Code extension files
-    "rootDir": "src",                          // Source folder
-    "strict": true,                            // Enable strict type checking
-    "esModuleInterop": true,                   // Default import compatibility
-    "skipLibCheck": true,                      // Skip type checks on dependencies
-    "forceConsistentCasingInFileNames": true, // Enforce consistent file naming
-    "sourceMap": true,                         // For debugging
+    "jsx": "react-jsx",                        
+    "outDir": "out",                           
+    "rootDir": "src",                          
+    "strict": true,                            
+    "esModuleInterop": true,                   
+    "skipLibCheck": true,                      
+    "forceConsistentCasingInFileNames": true, 
+    "sourceMap": true,                         
     "noImplicitAny": true,
-    "resolveJsonModule": true,                 // Import JSON if needed
+    "resolveJsonModule": true,                 
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "isolatedModules": true,      // Ensures each file can be transpiled independently (needed for TS + React + Webpack)
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "out"]
+  "exclude": ["node_modules", "out", "dist"]
 }
