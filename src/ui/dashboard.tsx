@@ -78,6 +78,16 @@ export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessag
         ]
     };
 
+    // Remove loading screen after first render
+    useEffect(() => {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.transition = 'opacity 0.3s ease';
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => loadingScreen.remove(), 300);
+        }
+    }, []);
+
     return (
         <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
             <h2>DevPulse X Dashboard</h2>
@@ -132,8 +142,24 @@ export function showDashboard(context: vscode.ExtensionContext) {
     <head>
         <meta charset="UTF-8">
         <title>DevPulse X Dashboard</title>
+        <style>
+            #loading-screen {
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: #fff;
+                z-index: 9999;
+                font-family: sans-serif;
+                font-size: 2rem;
+                color: #333;
+            }
+        </style>
     </head>
     <body>
+        <div id="loading-screen">Loading DevPulse_X...</div>
         <div id="root"></div>
         <script>${vscodeApiScript}</script>
         <script type="module" src="${panel.webview.asWebviewUri(
