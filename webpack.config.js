@@ -1,4 +1,3 @@
-// webpack.config.js
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
@@ -21,6 +20,9 @@ module.exports = (env, argv) => {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
       alias: {
         "@": path.resolve(__dirname, "src"),
+      },
+      fallback: {
+        vscode: false, // ignore vscode module in bundling
       },
     },
     module: {
@@ -78,29 +80,21 @@ module.exports = (env, argv) => {
     optimization: {
       minimize: isProd,
       minimizer: [
-        new TerserPlugin({
-          extractComments: false,
-        }),
+        new TerserPlugin({ extractComments: false }),
         new CssMinimizerPlugin(),
       ],
-      splitChunks: {
-        chunks: "all",
-      },
+      splitChunks: { chunks: "all" },
       runtimeChunk: "single",
     },
     devtool: isProd ? "source-map" : "eval-cheap-module-source-map",
     devServer: {
-      static: {
-        directory: path.join(__dirname, "public"),
-      },
+      static: { directory: path.join(__dirname, "public") },
       compress: true,
       port: 3000,
       historyApiFallback: true,
       hot: true,
       open: true,
     },
-    performance: {
-      hints: isProd ? "warning" : false,
-    },
+    performance: { hints: isProd ? "warning" : false },
   };
 };
