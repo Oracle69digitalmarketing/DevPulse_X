@@ -1,25 +1,33 @@
 import * as vscode from 'vscode';
-import { listenToCode } from './codeListener';
+import { activateCodeListener } from './codeListener';
 import { showDashboard } from './ui/dashboard';
 import { registerQuickFix } from './suggestionEngine';
 
+/**
+ * Activate DevPulse X extension
+ */
 export function activate(context: vscode.ExtensionContext) {
-    console.log('DevPulse X activated!');
+    console.log('✅ DevPulse X activated!');
 
-    // Start code listener
-    listenToCode(context);
+    // Start the main code listener
+    activateCodeListener(context);
 
     // Register Flow Dashboard command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('devpulse.showDashboard', () => {
+    const dashboardCmd = vscode.commands.registerCommand(
+        'devpulse.showDashboard',
+        () => {
             showDashboard(context);
-        })
+        }
     );
+    context.subscriptions.push(dashboardCmd);
 
     // Register Quick Fix provider
     registerQuickFix(context);
 }
 
+/**
+ * Deactivate DevPulse X extension
+ */
 export function deactivate() {
-    console.log('DevPulse X deactivated');
+    console.log('🛑 DevPulse X deactivated');
 }
