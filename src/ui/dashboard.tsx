@@ -23,22 +23,19 @@ interface DashboardMetrics {
 }
 
 // Main Dashboard component
-export const DevPulseDashboard: React.FC = () => {
+export const DevPulseDashboard: React.FC<{ vscodeApi: vscode.Webview }> = ({ vscodeApi }) => {
     const [metrics, setMetrics] = useState<DashboardMetrics[]>([]);
     const [timeLabels, setTimeLabels] = useState<string[]>([]);
 
     // Listen to VS Code messages
     useEffect(() => {
-        const vscodeApi = acquireVsCodeApi();
-
-        window.addEventListener('message', (event) => {
-            const message = event.data;
+        vscodeApi.onDidReceiveMessage((message: any) => {
             if (message.command === 'updateDashboard') {
                 setMetrics(prev => [...prev, message.payload]);
                 setTimeLabels(prev => [...prev, new Date().toLocaleTimeString()]);
             }
         });
-    }, []);
+    }, [vscodeApi]);
 
     // Chart data
     const data = {
@@ -79,8 +76,7 @@ export const DevPulseDashboard: React.FC = () => {
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             const value = (e.target as HTMLInputElement).value;
-                            console.log(`Mood logged: ${value}`);
-                            vscode.window.showInformationMessage(`Mood logged: ${value}`);
+                            vscodeApi.postMessage({ command: 'logMood', value });
                             (e.target as HTMLInputElement).value = '';
                         }
                     }}
@@ -90,7 +86,7 @@ export const DevPulseDashboard: React.FC = () => {
 
             <div style={{ marginTop: 20 }}>
                 <button
-                    onClick={() => vscode.window.postMessage({ command: 'autoScaffoldRequest' })}
+                    onClick={() => vscodeApi.postMessage({ command: 'autoScaffoldRequest' })}
                     style={{ padding: '10px 20px', fontSize: 14 }}
                 >
                     Trigger Auto-Scaffold
@@ -100,7 +96,7 @@ export const DevPulseDashboard: React.FC = () => {
     );
 };
 
-// Mount to VS Code Webview
+// Show the Dashboard in a Webview panel
 export function showDashboard(context: vscode.ExtensionContext) {
     const panel = vscode.window.createWebviewPanel(
         'devpulseDashboard',
@@ -108,6 +104,11 @@ export function showDashboard(context: vscode.ExtensionContext) {
         vscode.ViewColumn.One,
         { enableScripts: true }
     );
+
+    const vscodeApiScript = `
+        const vscodeApi = acquireVsCodeApi();
+        window.vscodeApi = vscodeApi;
+    `;
 
     const html = `
     <!DOCTYPE html>
@@ -118,6 +119,7 @@ export function showDashboard(context: vscode.ExtensionContext) {
     </head>
     <body>
         <div id="root"></div>
+        <script>${vscodeApiScript}</script>
         <script type="module" src="${panel.webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out/ui/dashboard.js')
         )}"></script>
@@ -128,9 +130,12 @@ export function showDashboard(context: vscode.ExtensionContext) {
     panel.webview.html = html;
 
     // Receive Auto-Scaffold button requests
-    panel.webview.onDidReceiveMessage(message => {
+    panel.webview.onDidReceiveMessage((message: any) => {
         if (message.command === 'autoScaffoldRequest') {
             vscode.commands.executeCommand('devpulse:autoScaffold');
+        }
+        if (message.command === 'logMood') {
+            vscode.window.showInformationMessage(`Mood logged: ${message.value}`);
         }
     });
 }
@@ -140,6 +145,6 @@ export function mountDashboard() {
     const root = document.getElementById('root');
     if (root) {
         const reactRoot = ReactDOM.createRoot(root);
-        reactRoot.render(<DevPulseDashboard />);
+        reactRoot.render(<DevPulseDashboard vscodeApi={window.vscodeApi} />);
     }
 }
