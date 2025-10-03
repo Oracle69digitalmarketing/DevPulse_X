@@ -2,25 +2,26 @@
   "name": "devpulse-x",
   "version": "1.0.0",
   "description": "DevPulse X — The Autonomous Coding Companion for VS Code",
-  "main": "out/extension.js",
+  "main": "./out/extension.js",
   "author": "Prince Adewale",
   "license": "MIT",
   "engines": {
     "vscode": "^1.81.0"
   },
   "activationEvents": [
-    "onCommand:devpulse:showDashboard",
-    "onCommand:devpulse:autoScaffold"
+    "onStartupFinished",
+    "onCommand:devpulse.showDashboard",
+    "onCommand:devpulse.autoScaffold"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "devpulse:showDashboard",
-        "title": "Show DevPulse Dashboard"
+        "command": "devpulse.showDashboard",
+        "title": "DevPulse: Show Dashboard"
       },
       {
-        "command": "devpulse:autoScaffold",
-        "title": "Auto-Scaffold Component"
+        "command": "devpulse.autoScaffold",
+        "title": "DevPulse: Auto-Scaffold Component"
       }
     ]
   },
