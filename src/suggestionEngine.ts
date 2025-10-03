@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import traverse, { NodePath } from '@babel/traverse';
 import { checkFeature } from './baselineEngine';
 
 /**
@@ -12,47 +12,93 @@ const FIX_MAPPINGS: Record<
 > = {
     fetch: {
         suggestion: 'Replace with axios or polyfill fetch.',
-        polyfill: `import 'whatwg-fetch';`
+        polyfill: `import 'whatwg-fetch';`,
     },
     'Array.flat': {
         suggestion: 'Use flatMap() or polyfill Array.flat.',
-        polyfill: `import 'core-js/features/array/flat';`
+        polyfill: `import 'core-js/features/array/flat';`,
     },
     'Promise.allSettled': {
         suggestion: 'Polyfill Promise.allSettled.',
-        polyfill: `import 'core-js/features/promise/all-settled';`
+        polyfill: `import 'core-js/features/promise/all-settled';`,
     },
     '?.': {
         suggestion: 'Use lodash.get or transpile with Babel.',
-        polyfill: undefined // usually handled by Babel transpilation
-    }
+        polyfill: undefined, // usually handled by Babel transpilation
+    },
 };
 
 /**
  * Returns suggestion text (and optional polyfill).
  */
 export function suggestFix(featureName: string) {
-    return FIX_MAPPINGS[featureName]?.suggestion || 'No automated suggestion available.';
+    return (
+        FIX_MAPPINGS[featureName]?.suggestion ||
+        'No automated suggestion available.'
+    );
+}
+
+/**
+ * Batch fix suggestions — scans document for all known features.
+ */
+export function suggestFixes(document: vscode.TextDocument): string[] {
+    const fixes: string[] = [];
+    const code = document.getText();
+
+    try {
+        const ast = parse(code, {
+            sourceType: 'module',
+            plugins: ['jsx', 'typescript'],
+        });
+
+        traverse(ast, {
+            enter(path: NodePath) {
+                let feature = '';
+
+                if (path.isMemberExpression()) {
+                    feature = path.toString();
+                } else if (path.isIdentifier()) {
+                    feature = path.node.name;
+                }
+
+                if (feature && FIX_MAPPINGS[feature]) {
+                    const support = checkFeature(feature);
+                    if (!support.fullySupported) {
+                        fixes.push(FIX_MAPPINGS[feature].suggestion);
+                    }
+                }
+            },
+        });
+    } catch (err) {
+        console.error('AST parsing failed in suggestFixes:', err);
+    }
+
+    return fixes;
 }
 
 /**
  * Quick Fix Provider that injects polyfills when possible.
  */
 export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
-    public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix];
+    public static readonly providedCodeActionKinds = [
+        vscode.CodeActionKind.QuickFix,
+    ];
 
     provideCodeActions(
         document: vscode.TextDocument,
         range: vscode.Range | vscode.Selection
     ): vscode.CodeAction[] | undefined {
         const code = document.getText();
-        let suggestions: vscode.CodeAction[] = [];
+        const suggestions: vscode.CodeAction[] = [];
 
         try {
-            const ast = parse(code, { sourceType: 'module', plugins: ['jsx', 'typescript'] });
+            const ast = parse(code, {
+                sourceType: 'module',
+                plugins: ['jsx', 'typescript'],
+            });
 
             traverse(ast, {
-                enter(path) {
+                enter(path: NodePath) {
                     let feature = '';
 
                     if (path.isMemberExpression()) {
@@ -65,12 +111,19 @@ export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
                         const support = checkFeature(feature);
 
                         if (!support.fullySupported) {
-                            const { suggestion, polyfill } = FIX_MAPPINGS[feature];
+                            const { suggestion, polyfill } =
+                                FIX_MAPPINGS[feature];
                             const loc = path.node.loc;
 
                             if (loc) {
-                                const start = new vscode.Position(loc.start.line - 1, loc.start.column);
-                                const end = new vscode.Position(loc.end.line - 1, loc.end.column);
+                                const start = new vscode.Position(
+                                    loc.start.line - 1,
+                                    loc.start.column
+                                );
+                                const end = new vscode.Position(
+                                    loc.end.line - 1,
+                                    loc.end.column
+                                );
                                 const fixRange = new vscode.Range(start, end);
 
                                 // === 1️⃣ Lightbulb Action: Suggest Fix (inline comment) ===
@@ -93,7 +146,8 @@ export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
                                         vscode.CodeActionKind.QuickFix
                                     );
 
-                                    polyfillAction.edit = new vscode.WorkspaceEdit();
+                                    polyfillAction.edit =
+                                        new vscode.WorkspaceEdit();
                                     polyfillAction.edit.insert(
                                         document.uri,
                                         new vscode.Position(0, 0), // top of file
@@ -104,7 +158,7 @@ export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
                             }
                         }
                     }
-                }
+                },
             });
         } catch (err) {
             console.error('AST parsing failed in QuickFix:', err);
@@ -124,7 +178,10 @@ export function registerQuickFix(context: vscode.ExtensionContext) {
         vscode.languages.registerCodeActionsProvider(
             { scheme: 'file', language: 'javascript' },
             provider,
-            { providedCodeActionKinds: DevPulseQuickFixProvider.providedCodeActionKinds }
+            {
+                providedCodeActionKinds:
+                    DevPulseQuickFixProvider.providedCodeActionKinds,
+            }
         )
     );
 
@@ -132,7 +189,10 @@ export function registerQuickFix(context: vscode.ExtensionContext) {
         vscode.languages.registerCodeActionsProvider(
             { scheme: 'file', language: 'typescript' },
             provider,
-            { providedCodeActionKinds: DevPulseQuickFixProvider.providedCodeActionKinds }
+            {
+                providedCodeActionKinds:
+                    DevPulseQuickFixProvider.providedCodeActionKinds,
+            }
         )
     );
 }
