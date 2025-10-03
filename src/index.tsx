@@ -1,5 +1,4 @@
 // src/index.tsx
-import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./ui/dashboardStyles.css"; // Dashboard CSS
 import { DevPulseDashboard, mountDashboard } from "./ui/dashboard";
