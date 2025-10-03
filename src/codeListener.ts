@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import traverse, { NodePath } from '@babel/traverse';
 import { trackEmotion } from './emotionTracker';
 import { checkFeature } from './baselineEngine';
-import { suggestFix, suggestFixes } from './suggestionEngine';
+import { suggestFix } from './suggestionEngine';
 import { autoScaffold } from './scaffolder';
 import { decorateTooltip } from './ui/tooltipManager';
 
@@ -18,7 +18,12 @@ import { decorateTooltip } from './ui/tooltipManager';
 export function activateCodeListener(context: vscode.ExtensionContext) {
     // === 1️⃣ Listen for text changes in active editor ===
     const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.document.languageId !== 'javascript' && event.document.languageId !== 'typescript' && event.document.languageId !== 'javascriptreact' && event.document.languageId !== 'typescriptreact') {
+        if (
+            event.document.languageId !== 'javascript' &&
+            event.document.languageId !== 'typescript' &&
+            event.document.languageId !== 'javascriptreact' &&
+            event.document.languageId !== 'typescriptreact'
+        ) {
             return; // Only run on JS/TS/React code
         }
 
@@ -31,11 +36,11 @@ export function activateCodeListener(context: vscode.ExtensionContext) {
         try {
             const ast = parse(code, {
                 sourceType: 'module',
-                plugins: ['jsx', 'typescript']
+                plugins: ['jsx', 'typescript'],
             });
 
             traverse(ast, {
-                enter(path) {
+                enter(path: NodePath) {
                     if (path.isIdentifier() || path.isMemberExpression()) {
                         const feature = path.toString();
                         const support = checkFeature(feature);
@@ -52,32 +57,34 @@ export function activateCodeListener(context: vscode.ExtensionContext) {
                             );
                         }
                     }
-                }
+                },
             });
         } catch (err) {
             console.error('⚠️ AST parse error in DevPulse:', err);
         }
-
-        // --- Suggest Fixes Inline (if available) ---
-        suggestFixes(event.document);
     });
 
     context.subscriptions.push(disposable);
 
     // === 2️⃣ Auto-Scaffold Command ===
-    const scaffoldCmd = vscode.commands.registerCommand('devpulse:autoScaffold', async () => {
-        const componentName = await vscode.window.showInputBox({
-            prompt: 'Enter component name',
-            placeHolder: 'MyNewComponent'
-        });
+    const scaffoldCmd = vscode.commands.registerCommand(
+        'devpulse:autoScaffold',
+        async () => {
+            const componentName = await vscode.window.showInputBox({
+                prompt: 'Enter component name',
+                placeHolder: 'MyNewComponent',
+            });
 
-        if (componentName && componentName.trim() !== '') {
-            autoScaffold(componentName.trim());
-            vscode.window.showInformationMessage(`✅ Auto-scaffold created: ${componentName}`);
-        } else {
-            vscode.window.showWarningMessage('❌ Invalid component name.');
+            if (componentName && componentName.trim() !== '') {
+                autoScaffold(componentName.trim());
+                vscode.window.showInformationMessage(
+                    `✅ Auto-scaffold created: ${componentName}`
+                );
+            } else {
+                vscode.window.showWarningMessage('❌ Invalid component name.');
+            }
         }
-    });
+    );
 
     context.subscriptions.push(scaffoldCmd);
 }
