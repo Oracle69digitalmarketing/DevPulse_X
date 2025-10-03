@@ -73,9 +73,10 @@ export function suggestFixes(document: vscode.TextDocument): string[] {
 export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
     public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix];
 
+    // 🔹 Prefix unused 'range' parameter with _ to satisfy TS strict rules
     provideCodeActions(
         document: vscode.TextDocument,
-        range: vscode.Range | vscode.Selection
+        _range: vscode.Range | vscode.Selection
     ): vscode.CodeAction[] | undefined {
         const code = document.getText();
         const suggestions: vscode.CodeAction[] = [];
