@@ -15,6 +15,11 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
+// Type for VS Code Webview API exposed in Webview
+interface WebviewApi<T = any> {
+    postMessage(message: T): void;
+}
+
 // Types for VS Code messages
 interface DashboardMetrics {
     charCount: number;
@@ -22,20 +27,31 @@ interface DashboardMetrics {
     undoCount: number;
 }
 
+interface DashboardMessage {
+    command: 'updateDashboard' | 'autoScaffoldRequest' | 'logMood';
+    payload?: DashboardMetrics;
+    value?: string;
+}
+
 // Main Dashboard component
-export const DevPulseDashboard: React.FC<{ vscodeApi: vscode.Webview }> = ({ vscodeApi }) => {
+export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessage> }> = ({ vscodeApi }) => {
     const [metrics, setMetrics] = useState<DashboardMetrics[]>([]);
     const [timeLabels, setTimeLabels] = useState<string[]>([]);
 
     // Listen to VS Code messages
     useEffect(() => {
-        vscodeApi.onDidReceiveMessage((message: any) => {
-            if (message.command === 'updateDashboard') {
-                setMetrics(prev => [...prev, message.payload]);
+        const handleMessage = (event: MessageEvent<DashboardMessage>) => {
+            const message = event.data;
+            if (message.command === 'updateDashboard' && message.payload) {
+                setMetrics(prev => [...prev, message.payload!]);
                 setTimeLabels(prev => [...prev, new Date().toLocaleTimeString()]);
             }
-        });
-    }, [vscodeApi]);
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     // Chart data
     const data = {
@@ -129,12 +145,12 @@ export function showDashboard(context: vscode.ExtensionContext) {
 
     panel.webview.html = html;
 
-    // Receive Auto-Scaffold button requests
-    panel.webview.onDidReceiveMessage((message: any) => {
+    // Handle messages from Webview
+    panel.webview.onDidReceiveMessage((message: DashboardMessage) => {
         if (message.command === 'autoScaffoldRequest') {
             vscode.commands.executeCommand('devpulse:autoScaffold');
         }
-        if (message.command === 'logMood') {
+        if (message.command === 'logMood' && message.value) {
             vscode.window.showInformationMessage(`Mood logged: ${message.value}`);
         }
     });
@@ -143,8 +159,8 @@ export function showDashboard(context: vscode.ExtensionContext) {
 // Mount React to root element
 export function mountDashboard() {
     const root = document.getElementById('root');
-    if (root) {
+    if (root && (window as any).vscodeApi) {
         const reactRoot = ReactDOM.createRoot(root);
-        reactRoot.render(<DevPulseDashboard vscodeApi={window.vscodeApi} />);
+        reactRoot.render(<DevPulseDashboard vscodeApi={(window as any).vscodeApi} />);
     }
 }
