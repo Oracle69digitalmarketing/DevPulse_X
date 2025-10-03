@@ -42,7 +42,8 @@ export const DevPulseDashboard: React.FC<{ vscodeApi?: WebviewApi<DashboardMessa
         const handleMessage = (event: MessageEvent<DashboardMessage>) => {
             const message = event.data;
             if (message.command === 'updateDashboard' && message.payload) {
-                setMetrics(prev => [...prev, message.payload]);
+                // Fix TS2345: ensure payload is not undefined
+                setMetrics(prev => [...prev, message.payload!]);
                 setTimeLabels(prev => [...prev, new Date().toLocaleTimeString()]);
             }
         };
