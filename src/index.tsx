@@ -1,10 +1,10 @@
 // src/index.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import "./ui/dashboardStyles.css"; // Your dashboard CSS
-import { DevPulseDashboard, mountDashboard } from "./ui/dashboard"; // Adjust path if needed
+import "./ui/dashboardStyles.css"; // Dashboard CSS
+import { DevPulseDashboard, mountDashboard } from "./ui/dashboard";
 
-// Create root if it doesn't exist
+// Create root element if it doesn't exist
 let rootElement = document.getElementById("root");
 if (!rootElement) {
   rootElement = document.createElement("div");
@@ -12,11 +12,23 @@ if (!rootElement) {
   document.body.appendChild(rootElement);
 }
 
+// Create and show loading screen
+let loadingScreen = document.getElementById("loading-screen");
+if (!loadingScreen) {
+  loadingScreen = document.createElement("div");
+  loadingScreen.id = "loading-screen";
+  loadingScreen.innerHTML = "<h1>Loading DevPulse_X...</h1>";
+  document.body.appendChild(loadingScreen);
+}
+
 // Mount React dashboard
 const root = ReactDOM.createRoot(rootElement);
-root.render(<DevPulseDashboard />);
+root.render(<DevPulseDashboard vscodeApi={(window as any).vscodeApi} />);
 
-// Optional: call mountDashboard if additional JS init is required
+// Remove loading screen when DOM content is loaded and dashboard is mounted
 document.addEventListener("DOMContentLoaded", () => {
   mountDashboard?.();
+  if (loadingScreen) {
+    loadingScreen.style.display = "none";
+  }
 });
