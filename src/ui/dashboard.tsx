@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Line } from 'react-chartjs-2';
@@ -15,12 +14,12 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-// Type for VS Code Webview API exposed in Webview
+// Type for VS Code Webview API
 interface WebviewApi<T = any> {
     postMessage(message: T): void;
 }
 
-// Types for VS Code messages
+// Dashboard metrics and message types
 interface DashboardMetrics {
     charCount: number;
     idleTime: number;
@@ -33,23 +32,21 @@ interface DashboardMessage {
     value?: string;
 }
 
-// Main Dashboard component
-export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessage> }> = ({ vscodeApi }) => {
+// Make vscodeApi optional to allow browser bundling
+export const DevPulseDashboard: React.FC<{ vscodeApi?: WebviewApi<DashboardMessage> }> = ({ vscodeApi }) => {
     const [metrics, setMetrics] = useState<DashboardMetrics[]>([]);
     const [timeLabels, setTimeLabels] = useState<string[]>([]);
 
-    // Listen to VS Code messages
+    // Listen to messages
     useEffect(() => {
         const handleMessage = (event: MessageEvent<DashboardMessage>) => {
             const message = event.data;
             if (message.command === 'updateDashboard' && message.payload) {
-                setMetrics(prev => [...prev, message.payload!]);
+                setMetrics(prev => [...prev, message.payload]);
                 setTimeLabels(prev => [...prev, new Date().toLocaleTimeString()]);
             }
         };
-
         window.addEventListener('message', handleMessage);
-
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
@@ -78,7 +75,7 @@ export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessag
         ]
     };
 
-    // Remove loading screen after first render
+    // Remove loading screen
     useEffect(() => {
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) {
@@ -100,7 +97,7 @@ export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessag
                     type="text"
                     placeholder="How do you feel right now?"
                     onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && vscodeApi) {
                             const value = (e.target as HTMLInputElement).value;
                             vscodeApi.postMessage({ command: 'logMood', value });
                             (e.target as HTMLInputElement).value = '';
@@ -112,7 +109,7 @@ export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessag
 
             <div style={{ marginTop: 20 }}>
                 <button
-                    onClick={() => vscodeApi.postMessage({ command: 'autoScaffoldRequest' })}
+                    onClick={() => vscodeApi?.postMessage({ command: 'autoScaffoldRequest' })}
                     style={{ padding: '10px 20px', fontSize: 14 }}
                 >
                     Trigger Auto-Scaffold
@@ -122,17 +119,19 @@ export const DevPulseDashboard: React.FC<{ vscodeApi: WebviewApi<DashboardMessag
     );
 };
 
-// Show the Dashboard in a Webview panel
-export function showDashboard(context: vscode.ExtensionContext) {
-    const panel = vscode.window.createWebviewPanel(
-        'devpulseDashboard',
-        'DevPulse X Dashboard',
-        vscode.ViewColumn.One,
-        { enableScripts: true }
-    );
+// Show dashboard in VS Code Webview
+export function showDashboard(context: any) {
+    const panel = (window as any).vscodeWindow?.createWebviewPanel
+        ? (window as any).vscodeWindow.createWebviewPanel(
+              'devpulseDashboard',
+              'DevPulse X Dashboard',
+              1,
+              { enableScripts: true }
+          )
+        : null;
 
     const vscodeApiScript = `
-        const vscodeApi = acquireVsCodeApi();
+        const vscodeApi = typeof acquireVsCodeApi !== 'undefined' ? acquireVsCodeApi() : undefined;
         window.vscodeApi = vscodeApi;
     `;
 
@@ -162,31 +161,22 @@ export function showDashboard(context: vscode.ExtensionContext) {
         <div id="loading-screen">Loading DevPulse_X...</div>
         <div id="root"></div>
         <script>${vscodeApiScript}</script>
-        <script type="module" src="${panel.webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'out/ui/dashboard.js')
-        )}"></script>
+        <script type="module" src="${panel ? panel.webview.asWebviewUri(
+        context.extensionUri + '/out/ui/dashboard.js'
+    ) : ''}"></script>
     </body>
     </html>
     `;
 
-    panel.webview.html = html;
-
-    // Handle messages from Webview
-    panel.webview.onDidReceiveMessage((message: DashboardMessage) => {
-        if (message.command === 'autoScaffoldRequest') {
-            vscode.commands.executeCommand('devpulse:autoScaffold');
-        }
-        if (message.command === 'logMood' && message.value) {
-            vscode.window.showInformationMessage(`Mood logged: ${message.value}`);
-        }
-    });
+    if (panel) panel.webview.html = html;
 }
 
-// Mount React to root element
+// Mount React dashboard safely
 export function mountDashboard() {
     const root = document.getElementById('root');
-    if (root && (window as any).vscodeApi) {
+    const vscodeApi = (window as any).vscodeApi;
+    if (root) {
         const reactRoot = ReactDOM.createRoot(root);
-        reactRoot.render(<DevPulseDashboard vscodeApi={(window as any).vscodeApi} />);
+        reactRoot.render(<DevPulseDashboard vscodeApi={vscodeApi} />);
     }
 }
