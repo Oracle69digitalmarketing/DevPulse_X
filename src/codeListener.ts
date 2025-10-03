@@ -17,17 +17,19 @@ import { decorateTooltip } from './ui/tooltipManager';
  */
 export function activateCodeListener(context: vscode.ExtensionContext) {
     // === 1️⃣ Listen for text changes in active editor ===
-    const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
+    const disposable = vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
+        const doc = event.document;
+
         if (
-            event.document.languageId !== 'javascript' &&
-            event.document.languageId !== 'typescript' &&
-            event.document.languageId !== 'javascriptreact' &&
-            event.document.languageId !== 'typescriptreact'
+            doc.languageId !== 'javascript' &&
+            doc.languageId !== 'typescript' &&
+            doc.languageId !== 'javascriptreact' &&
+            doc.languageId !== 'typescriptreact'
         ) {
             return; // Only run on JS/TS/React code
         }
 
-        const code = event.document.getText();
+        const code = doc.getText();
 
         // --- Track Emotion & Flow ---
         trackEmotion(event);
@@ -50,7 +52,7 @@ export function activateCodeListener(context: vscode.ExtensionContext) {
                             const line = path.node.loc?.start.line ?? 0;
 
                             decorateTooltip(
-                                event.document.uri,
+                                doc.uri,
                                 line,
                                 support,
                                 fix
@@ -78,7 +80,7 @@ export function activateCodeListener(context: vscode.ExtensionContext) {
             if (componentName && componentName.trim() !== '') {
                 autoScaffold(componentName.trim());
                 vscode.window.showInformationMessage(
-                    `✅ Auto-scaffold created: ${componentName}`
+                    `✅ Auto-scaffold created: ${componentName.trim()}`
                 );
             } else {
                 vscode.window.showWarningMessage('❌ Invalid component name.');
