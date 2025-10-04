@@ -1,6 +1,6 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+// const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // No longer needed
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
@@ -15,6 +15,7 @@ module.exports = (env, argv) => {
       filename: isProd ? "js/[name].[contenthash].js" : "js/[name].js",
       path: path.resolve(__dirname, "dist"),
       publicPath: "/",
+      // This replaces CleanWebpackPlugin
       clean: true,
     },
     resolve: {
@@ -23,7 +24,7 @@ module.exports = (env, argv) => {
         "@": path.resolve(__dirname, "src"),
       },
       fallback: {
-        vscode: false, // ignore vscode module in bundling
+        vscode: false,
       },
     },
     module: {
@@ -35,22 +36,29 @@ module.exports = (env, argv) => {
         },
         {
           test: /\.css$/i,
-          use: [isProd ? MiniCssExtractPlugin.loader : "style-loader", "css-loader"],
+          use: [
+            isProd ? MiniCssExtractPlugin.loader : "style-loader",
+            "css-loader",
+          ],
         },
         {
           test: /\.(png|jpe?g|gif|svg)$/i,
           type: "asset/resource",
-          generator: { filename: "images/[hash][ext][query]" },
+          generator: {
+            filename: "images/[hash][ext][query]",
+          },
         },
         {
           test: /\.(woff(2)?|eot|ttf|otf)$/i,
           type: "asset/resource",
-          generator: { filename: "fonts/[hash][ext][query]" },
+          generator: {
+            filename: "fonts/[hash][ext][query]",
+          },
         },
       ],
     },
     plugins: [
-      new CleanWebpackPlugin(),
+      // CleanWebpackPlugin is removed
       new HtmlWebpackPlugin({
         template: "./public/index.html",
         favicon: "./public/favicon.ico",
@@ -73,7 +81,10 @@ module.exports = (env, argv) => {
     ],
     optimization: {
       minimize: isProd,
-      minimizer: [new TerserPlugin({ extractComments: false }), new CssMinimizerPlugin()],
+      minimizer: [
+        new TerserPlugin({ extractComments: false }),
+        new CssMinimizerPlugin(),
+      ],
       splitChunks: { chunks: "all" },
       runtimeChunk: "single",
     },
