@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { activateCodeListener } from './codeListener';
-import { showDashboard } from './ui/dashboard';
+import { showDashboard, getDashboardWebview } from './ui/dashboard'; // Assuming getDashboardWebview exists
 import { registerQuickFix } from './suggestionEngine';
+import { initActivityTracker } from './activityTracker'; // Import the new initializer
 
-// It's good practice to create a single output channel for your extension
+// Create a single output channel for the extension for better logging
 const outputChannel = vscode.window.createOutputChannel('DevPulse X');
 
 /**
@@ -13,21 +14,26 @@ export function activate(context: vscode.ExtensionContext) {
     try {
         outputChannel.appendLine('✅ Activating DevPulse X...');
 
-        // Start the main code listener
+        // Initialize the activity tracker and provide a way to send metrics to the dashboard
+        initActivityTracker((metric) => {
+            // Get the dashboard's webview and post a message to it
+            const dashboard = getDashboardWebview();
+            if (dashboard) {
+                dashboard.postMessage({
+                    command: 'updateMetric',
+                    data: metric,
+                });
+            }
+        });
+
+        // Start the main code listener which now handles activity tracking
         activateCodeListener(context);
 
         // Register Flow Dashboard command
         const dashboardCmd = vscode.commands.registerCommand(
             'devpulse.showDashboard',
             () => {
-                // It's also good to wrap command executions in try/catch
-                try {
-                    showDashboard(context);
-                } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    vscode.window.showErrorMessage(`Failed to show DevPulse X Dashboard: ${errorMessage}`);
-                    outputChannel.appendLine(`[ERROR] Failed to show Dashboard: ${errorMessage}`);
-                }
+                showDashboard(context);
             }
         );
         context.subscriptions.push(dashboardCmd);
@@ -38,7 +44,6 @@ export function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine('🚀 DevPulse X activated successfully!');
 
     } catch (error) {
-        // If activation fails, show an error message and log the details
         const errorMessage = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to activate DevPulse X: ${errorMessage}`);
         outputChannel.appendLine(`[ERROR] Activation failed: ${errorMessage}`);
@@ -49,7 +54,5 @@ export function activate(context: vscode.ExtensionContext) {
  * Deactivate DevPulse X extension
  */
 export function deactivate() {
-    // The output channel will be disposed of automatically by VS Code,
-    // but you can log a final message here if you wish.
     outputChannel.appendLine('🛑 DevPulse X deactivated');
 }
