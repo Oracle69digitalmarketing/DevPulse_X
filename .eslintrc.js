@@ -20,18 +20,18 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
-    'prettier' // only eslint-config-prettier here, remove plugin:prettier/recommended to avoid circular refs
+    'prettier' // only eslint-config-prettier
   ],
   rules: {
-    // TypeScript rules
+    // TypeScript
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
 
-    // React rules
+    // React
     'react/prop-types': 'off',
     'react/react-in-jsx-scope': 'off',
 
-    // Prettier integration
+    // Prettier
     'prettier/prettier': ['error', { endOfLine: 'auto' }],
   },
 };
