@@ -34,8 +34,7 @@
     "lint:fix": "eslint 'src/**/*.{js,ts,tsx}' --fix",
     "format": "prettier --write 'src/**/*.{js,ts,tsx,json,css,md}'",
     "prepare": "husky install",
-    "precommit": "lint-staged",
-    "build": "npm run clean && npm run compile && npm run bundle-ui",
+    "build": "npm run clean && npm run format && npm run compile && npm run bundle-ui",
     "clean": "rimraf out dist"
   },
   "dependencies": {
