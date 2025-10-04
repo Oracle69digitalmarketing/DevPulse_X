@@ -1,26 +1,29 @@
 {
   "compilerOptions": {
-    "target": "ES2020",                       
-    "module": "ESNext",                        
+    // --- Core Build Settings for a VS Code Extension ---
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "DOM"],
+    "outDir": "./out",
+    "rootDir": "./src",
+    "sourceMap": true,
+
+    // --- Module Resolution ---
     "moduleResolution": "node",
-    "lib": ["ES2020", "DOM"],                 
-    "allowJs": true,                           
-    "checkJs": false,
-    "jsx": "react-jsx",                        
-    "outDir": "out",                           
-    "rootDir": "src",                          
-    "strict": true,                            
-    "esModuleInterop": true,                   
-    "skipLibCheck": true,                      
-    "forceConsistentCasingInFileNames": true, 
-    "sourceMap": true,                         
+    "resolveJsonModule": true,
+
+    // --- Interoperability & JSX ---
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-jsx",
+
+    // --- Strictness & Code Quality ---
+    "strict": true,
     "noImplicitAny": true,
-    "resolveJsonModule": true,                 
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "isolatedModules": true,      // Ensures each file can be transpiled independently (needed for TS + React + Webpack)
-    "allowSyntheticDefaultImports": true
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "out", "dist"]
+  "exclude": ["node_modules", ".vscode-test", "out", "dist"]
 }
