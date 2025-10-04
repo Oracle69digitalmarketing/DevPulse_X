@@ -1,6 +1,5 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-// const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // No longer needed
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
@@ -10,19 +9,25 @@ module.exports = (env, argv) => {
 
   return {
     mode: isProd ? "production" : "development",
-    entry: "./src/index.tsx",
+    // The entry point for your webview's UI code
+    entry: "./src/ui/index.tsx",
     output: {
-      filename: isProd ? "js/[name].[contenthash].js" : "js/[name].js",
+      // All output files will be placed in the 'dist' folder
       path: path.resolve(__dirname, "dist"),
-      publicPath: "/",
-      // This replaces CleanWebpackPlugin
+      // Use a content hash for cache-busting in production
+      filename: isProd ? "js/[name].[contenthash].js" : "js/[name].js",
+      // CRITICAL: Use relative paths for all assets to work in a webview
+      publicPath: "./",
+      // Clean the 'dist' folder before each build
       clean: true,
     },
     resolve: {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
       alias: {
+        // A common alias for the src directory
         "@": path.resolve(__dirname, "src"),
       },
+      // IMPORTANT: Prevents Webpack from trying to bundle the 'vscode' module
       fallback: {
         vscode: false,
       },
@@ -37,40 +42,28 @@ module.exports = (env, argv) => {
         {
           test: /\.css$/i,
           use: [
+            // Extracts CSS into files for production, uses style-loader for development
             isProd ? MiniCssExtractPlugin.loader : "style-loader",
             "css-loader",
           ],
         },
         {
-          test: /\.(png|jpe?g|gif|svg)$/i,
+          // Modern way to handle assets like images and fonts
+          test: /\.(png|jpe?g|gif|svg|woff(2)?|eot|ttf|otf)$/i,
           type: "asset/resource",
           generator: {
-            filename: "images/[hash][ext][query]",
-          },
-        },
-        {
-          test: /\.(woff(2)?|eot|ttf|otf)$/i,
-          type: "asset/resource",
-          generator: {
-            filename: "fonts/[hash][ext][query]",
+            filename: "assets/[hash][ext][query]",
           },
         },
       ],
     },
     plugins: [
-      // CleanWebpackPlugin is removed
       new HtmlWebpackPlugin({
-        template: "./public/index.html",
-        favicon: "./public/favicon.ico",
-        minify: isProd
-          ? {
-              collapseWhitespace: true,
-              removeComments: true,
-              removeRedundantAttributes: true,
-              useShortDoctype: true,
-            }
-          : false,
+        // Assumes your HTML template is with your UI code
+        template: "./src/ui/index.html",
+        filename: "index.html",
       }),
+      // This spread operator correctly adds the plugin only for production builds
       ...(isProd
         ? [
             new MiniCssExtractPlugin({
@@ -80,23 +73,27 @@ module.exports = (env, argv) => {
         : []),
     ],
     optimization: {
+      // Only minimize in production
       minimize: isProd,
-      minimizer: [
-        new TerserPlugin({ extractComments: false }),
-        new CssMinimizerPlugin(),
-      ],
-      splitChunks: { chunks: "all" },
-      runtimeChunk: "single",
+      minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+      // For a VS Code webview, it's often simpler to bundle vendor code
+      // directly into the main chunk rather than splitting it.
+      splitChunks: {
+        cacheGroups: {
+          default: false,
+          vendors: false,
+        },
+      },
     },
+    // Use a good source map for debugging
     devtool: isProd ? "source-map" : "eval-cheap-module-source-map",
+    // Dev server config is for 'npm run start:ui' and doesn't affect the final build
     devServer: {
-      static: { directory: path.join(__dirname, "public") },
+      static: { directory: path.join(__dirname, "dist") },
       compress: true,
       port: 3000,
       historyApiFallback: true,
       hot: true,
-      open: true,
     },
-    performance: { hints: isProd ? "warning" : false },
   };
 };
