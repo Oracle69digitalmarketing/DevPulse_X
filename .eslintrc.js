@@ -6,13 +6,13 @@ module.exports = {
     sourceType: 'module',
     ecmaFeatures: { jsx: true },
   },
-  settings: {
-    react: { version: 'detect' },
-  },
   env: {
     browser: true,
     es2020: true,
     node: true,
+  },
+  settings: {
+    react: { version: 'detect' },
   },
   plugins: ['@typescript-eslint', 'react', 'react-hooks', 'prettier'],
   extends: [
@@ -20,23 +20,18 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
-    'plugin:prettier/recommended',
+    'prettier' // only eslint-config-prettier here, remove plugin:prettier/recommended to avoid circular refs
   ],
   rules: {
-    // TypeScript
+    // TypeScript rules
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
 
-    // React
-    'react/prop-types': 'off', // not needed with TS
-    'react/react-in-jsx-scope': 'off', // Next.js/modern React auto-imports React
+    // React rules
+    'react/prop-types': 'off',
+    'react/react-in-jsx-scope': 'off',
 
-    // Prettier
-    'prettier/prettier': [
-      'error',
-      {
-        endOfLine: 'auto',
-      },
-    ],
+    // Prettier integration
+    'prettier/prettier': ['error', { endOfLine: 'auto' }],
   },
 };
