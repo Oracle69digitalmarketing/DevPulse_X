@@ -1,15 +1,14 @@
 import * as vscode from 'vscode';
 import { parse, ParserOptions } from '@babel/parser';
 import traverse, { NodePath } from '@babel/traverse';
-import { trackCodingActivity } from './activityTracker'; // Corrected import name
-import { checkFeature } from './baselineEngine';
+import { trackCodingActivity, cleanupDocumentState } from './activityTracker';
+import { checkFeature, FeatureSupportResult } from './baselineEngine';
 import { suggestFix } from './suggestionEngine';
 import { autoScaffold } from './scaffolder';
-import { decorateTooltip, clearAllTooltips } from './ui/tooltipManager'; // Added clearAllTooltips
+import { addFeatureWarning, applyDecorations, clearDecorations } from './ui/tooltipManager';
 
 // --- Constants for better maintainability ---
 
-// A list of language IDs we want to analyze.
 const SUPPORTED_LANGUAGE_IDS = [
     'javascript',
     'typescript',
@@ -17,120 +16,137 @@ const SUPPORTED_LANGUAGE_IDS = [
     'typescriptreact',
 ];
 
-// Configuration for Babel parser.
 const BABEL_PARSER_OPTIONS: ParserOptions = {
     sourceType: 'module',
     plugins: ['jsx', 'typescript'],
-    errorRecovery: true, // Attempt to parse even with syntax errors
+    errorRecovery: true, // Crucial for parsing code as the user types
 };
 
+// Use a Map to manage debounce timers for each document independently.
+const debounceTimers = new Map<string, NodeJS.Timeout>();
+
 /**
- * Main code listener for DevPulse X.
+ * Activates the core event listeners for DevPulse X.
  * Handles:
- *  - Typing activity tracking
- *  - Debounced AST analysis for feature compatibility checks
- *  - Inline fixes + tooltips
- *  - Auto-scaffolding command
+ *  - Typing activity tracking via `activityTracker`.
+ *  - Debounced AST analysis for feature compatibility checks.
+ *  - Inline fixes + tooltips via `tooltipManager`.
+ *  - Auto-scaffolding command.
  */
 export function activateCodeListener(context: vscode.ExtensionContext) {
-    // A timer for debouncing the heavy AST analysis.
-    let debounceTimer: NodeJS.Timeout;
-
-    // === 1️⃣ Listen for text changes in active editor ===
+    // === 1️⃣ Listen for text changes to trigger analysis ===
     const changeListener = vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
         const { document } = event;
+        const docUri = document.uri;
 
-        // --- A: Instantaneous Actions (run on every keystroke) ---
-
-        // Only run on supported languages.
-        if (!SUPPORTED_LANGUAGE_IDS.includes(document.languageId)) {
+        // Ignore unsupported languages and virtual documents
+        if (docUri.scheme !== 'file' || !SUPPORTED_LANGUAGE_IDS.includes(document.languageId)) {
             return;
         }
 
-        // Track typing activity immediately. This is lightweight and should not be debounced.
+        // --- A: Instantaneous Actions (run on every keystroke) ---
         trackCodingActivity(event);
 
-        // --- B: Debounced Actions (heavy analysis) ---
+        // --- B: Debounced Heavy Analysis (AST parsing) ---
+        const uriString = docUri.toString();
+        // Clear any existing timer for this document to reset the debounce period
+        if (debounceTimers.has(uriString)) {
+            clearTimeout(debounceTimers.get(uriString)!);
+        }
 
-        // Clear the previous timer to reset the debounce period.
-        clearTimeout(debounceTimer);
-
-        // Set a new timer. The analysis will run only if the user stops typing for 300ms.
-        debounceTimer = setTimeout(() => {
+        // Set a new timer. The analysis will only run if the user stops typing.
+        const newTimer = setTimeout(() => {
             runAstAnalysis(document);
-        }, 300); // 300ms is a good starting point for debounce delay.
+            debounceTimers.delete(uriString); // Clean up the timer after it runs
+        }, 500); // A 500ms delay is a good balance between responsiveness and performance.
+
+        debounceTimers.set(uriString, newTimer);
     });
 
-    context.subscriptions.push(changeListener);
-
-    // === 2️⃣ Auto-Scaffold Command ===
-    const scaffoldCmd = vscode.commands.registerCommand(
-        'devpulse.autoScaffold', // Note: Command IDs usually follow 'extensionName.commandName'
-        async () => {
-            try {
-                const componentName = await vscode.window.showInputBox({
-                    prompt: 'Enter the name for the new component',
-                    placeHolder: 'MyNewComponent',
-                    validateInput: (value) => {
-                        // Add validation to prevent empty or invalid names.
-                        return value && value.trim().length > 0 ? null : 'Component name cannot be empty.';
-                    },
-                });
-
-                if (componentName) {
-                    const trimmedName = componentName.trim();
-                    await autoScaffold(trimmedName); // Assuming autoScaffold might be async
-                    vscode.window.showInformationMessage(`✅ Auto-scaffold created: ${trimmedName}`);
-                }
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                vscode.window.showErrorMessage(`❌ Auto-scaffold failed: ${errorMessage}`);
-                console.error('Auto-scaffold error:', error);
-            }
+    // === 2️⃣ Listen for document closure to clean up state ===
+    const closeListener = vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
+        // Clean up state from the activity tracker
+        cleanupDocumentState(document);
+        // Clean up any pending timers
+        const uriString = document.uri.toString();
+        if (debounceTimers.has(uriString)) {
+            clearTimeout(debounceTimers.get(uriString)!);
+            debounceTimers.delete(uriString);
         }
-    );
+        // Clear any visible decorations
+        clearDecorations(document.uri);
+    });
+
+    context.subscriptions.push(changeListener, closeListener);
+
+    // === 3️⃣ Register the Auto-Scaffold Command ===
+    const scaffoldCmd = vscode.commands.registerCommand('devpulse.autoScaffold', async () => {
+        try {
+            const componentName = await vscode.window.showInputBox({
+                prompt: 'Enter the name for the new component',
+                placeHolder: 'MyNewComponent',
+                validateInput: (value) => (value?.trim() ? null : 'Component name cannot be empty.'),
+            });
+
+            if (componentName) {
+                const trimmedName = componentName.trim();
+                await autoScaffold(trimmedName);
+                vscode.window.showInformationMessage(`✅ Auto-scaffold created: ${trimmedName}`);
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`❌ Auto-scaffold failed: ${errorMessage}`);
+            console.error('[DevPulse X] Auto-scaffold error:', error);
+        }
+    });
 
     context.subscriptions.push(scaffoldCmd);
 }
 
 /**
- * Parses the document, traverses the AST, and applies decorations.
- * This is the heavy lifting function that is debounced.
+ * Parses the document, traverses the AST, and uses the tooltipManager to apply decorations.
+ * This is the heavy lifting function that is debounced for performance.
  * @param doc The document to analyze.
  */
 function runAstAnalysis(doc: vscode.TextDocument) {
-    const code = doc.getText();
-    // It's good practice to clear previous decorations before applying new ones.
-    clearAllTooltips(doc.uri);
+    // 1. Clear any old decorations from the tooltip manager for this document.
+    clearDecorations(doc.uri);
 
     try {
-        const ast = parse(code, BABEL_PARSER_OPTIONS);
+        const ast = parse(doc.getText(), BABEL_PARSER_OPTIONS);
 
         traverse(ast, {
-            // More specific traversal can improve performance.
-            // Example: only check CallExpressions or Identifiers in certain contexts.
+            // Traverse more specific nodes for better performance if possible.
+            // For now, Identifier and MemberExpression are good starting points.
             enter(path: NodePath) {
                 if (path.isIdentifier() || path.isMemberExpression()) {
-                    // This logic remains, but now it runs far less often.
-                    const feature = path.toString();
-                    const support = checkFeature(feature);
+                    const featureName = path.toString(); // e.g., 'Object.hasOwn'
+                    const support: FeatureSupportResult = checkFeature(featureName);
 
-                    if (!support.fullySupported) {
-                        const fix = suggestFix(feature);
-                        // Ensure location exists before trying to access it.
-                        if (path.node.loc) {
-                            const line = path.node.loc.start.line;
-                            decorateTooltip(doc.uri, line, support, fix);
-                        }
+                    // 2. If the feature is not baseline-supported, collect a new decoration.
+                    if (!support.isBaseline && path.node.loc) {
+                        const fix = suggestFix(featureName);
+                        const range = new vscode.Range(
+                            path.node.loc.start.line - 1, // Babel lines are 1-based
+                            path.node.loc.start.column,
+                            path.node.loc.end.line - 1,
+                            path.node.loc.end.column
+                        );
+                        addFeatureWarning(doc.uri, range, support, fix);
                     }
                 }
             },
         });
     } catch (err) {
-        // Errors are expected while the user is typing.
-        // We log it quietly without bothering the user.
+        // Silently log parsing errors, as they are expected while the user is typing.
         if (err instanceof Error && err.name !== 'SyntaxError') {
-             console.error('⚠️ AST parse error in DevPulse:', err);
+            console.error('[DevPulse X] AST parse error:', err);
         }
+    }
+
+    // 3. Apply all collected decorations at once.
+    const editor = vscode.window.activeTextEditor;
+    if (editor && editor.document.uri.toString() === doc.uri.toString()) {
+        applyDecorations(editor);
     }
 }
