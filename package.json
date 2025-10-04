@@ -30,6 +30,8 @@
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "start": "code --extensionDevelopmentPath=.",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
     "// UI (Webpack) Scripts": "",
     "start:ui": "webpack serve --mode development --config webpack.config.js",
     "build:ui": "webpack --mode production --config webpack.config.js",
