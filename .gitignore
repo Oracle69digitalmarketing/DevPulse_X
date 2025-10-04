@@ -1,0 +1,51 @@
+# ===================================================================
+# General
+# ===================================================================
+
+# Dependency directories
+node_modules/
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+# Keep .env files private. Commit an example file instead.
+.env
+.env.*
+!.env.example
+
+# ===================================================================
+# Build Artifacts
+# ===================================================================
+
+# Compiled TypeScript output for the extension backend
+/out/
+
+# Bundled webview UI output from Webpack
+/dist/
+
+# The packaged VS Code extension file
+*.vsix
+
+# ===================================================================
+# Development & Testing
+# ===================================================================
+
+# VS Code Test Runner cache and downloaded instances
+/.vscode-test/
+
+# ===================================================================
+# OS-generated files
+# ===================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
