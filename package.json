@@ -26,16 +26,21 @@
     ]
   },
   "scripts": {
+    "// VS Code Extension Scripts": "",
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
-    "bundle-ui": "webpack --config webpack.config.js",
     "start": "code --extensionDevelopmentPath=.",
+    "// UI (Webpack) Scripts": "",
+    "start:ui": "webpack serve --mode development --config webpack.config.js",
+    "build:ui": "webpack --mode production --config webpack.config.js",
+    "build:ui:dev": "webpack --mode development --config webpack.config.js",
+    "// Quality & Build Scripts": "",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet",
     "lint:fix": "eslint 'src/**/*.{js,ts,tsx}' --fix",
     "format": "prettier --write 'src/**/*.{js,ts,tsx,json,css,md}'",
-    "prepare": "husky install",
-    "build": "npm run clean && npm run format && npm run compile && npm run bundle-ui",
-    "clean": "rimraf out dist"
+    "clean": "rimraf out dist",
+    "build": "npm run clean && npm run format && npm run lint && npm run compile && npm run build:ui",
+    "prepare": "husky install"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -55,6 +60,7 @@
     "ts-loader": "^9.4.5",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
     "css-loader": "^6.9.4",
     "style-loader": "^3.3.3",
     "babel-loader": "^9.1.3",
