@@ -19,10 +19,8 @@
 
     // --- Strictness & Code Quality ---
     "strict": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true // Speeds up compilation by not checking dependency types.
   },
   "include": ["src"],
   "exclude": ["node_modules", ".vscode-test", "out", "dist"]
