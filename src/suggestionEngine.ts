@@ -1,3 +1,5 @@
+// src/suggestionEngine.ts
+
 import * as vscode from 'vscode';
 import { parse, ParserPlugin } from '@babel/parser';
 import traverse, { NodePath } from '@babel/traverse';
@@ -11,7 +13,6 @@ import {
 import { checkFeature } from './baselineEngine';
 
 // --- Data Layer: Feature Definitions ---
-// Using a more structured interface makes this easier to manage.
 interface IFeatureFix {
   suggestion: string;
   polyfill?: string;
@@ -32,17 +33,18 @@ const FIX_MAPPINGS: Record<string, IFeatureFix> = {
   },
   OptionalChaining: {
     suggestion: 'Optional Chaining (`?.`) may not be supported in older environments. Ensure your build process (e.g., Babel) transpiles it.',
-    polyfill: undefined, // Transpilation is the fix, not a polyfill.
   },
 };
 
 // --- Data Structure for Discovered Issues ---
-// This structure helps pass detailed information between functions.
 interface IUnsupportedFeature {
   featureName: string;
   fix: IFeatureFix;
   range: vscode.Range;
 }
+
+// A cache to store AST results per document version, improving performance.
+const astCache = new Map<string, File>();
 
 /**
  * Scans a document for unsupported features using a single AST traversal.
@@ -51,43 +53,51 @@ interface IUnsupportedFeature {
 function findUnsupportedFeatures(document: vscode.TextDocument): IUnsupportedFeature[] {
   const features: IUnsupportedFeature[] = [];
   const code = document.getText();
-  const plugins: ParserPlugin[] = ['jsx', 'typescript'];
+  const cacheKey = `${document.uri.toString()}|${document.version}`;
 
-  let ast: File;
-  try {
-    ast = parse(code, { sourceType: 'module', plugins });
-  } catch (err) {
-    console.error('AST parsing failed:', err);
-    return []; // Exit gracefully if parsing fails
+  let ast: File | undefined = astCache.get(cacheKey);
+
+  if (!ast) {
+    try {
+      const plugins: ParserPlugin[] = ['jsx', 'typescript'];
+      ast = parse(code, { sourceType: 'module', plugins, errorRecovery: true });
+      astCache.set(cacheKey, ast);
+    } catch (err) {
+      console.error('AST parsing failed:', err);
+      astCache.delete(cacheKey); // Don't cache a failed parse
+      return [];
+    }
   }
+
+  // Use a Set to efficiently track features already found in this traversal.
+  const foundInThisRun = new Set<string>();
 
   traverse(ast, {
     // Check for global identifiers like 'fetch'
-    Identifier(path: NodePath) {
+    Identifier(path) {
       const featureName = path.node.name;
-      if (FIX_MAPPINGS[featureName] && path.scope.hasBinding(featureName) === false) {
-        addFeatureIfUnsupported(featureName, path, features);
+      if (FIX_MAPPINGS[featureName] && !path.scope.hasBinding(featureName)) {
+        addFeatureIfUnsupported(featureName, path, features, foundInThisRun);
       }
     },
 
     // Check for methods on objects, e.g., `myArray.flat()`
-    MemberExpression(path: NodePath) {
+    MemberExpression(path) {
       const property = path.get('property');
       if (isIdentifier(property)) {
-        // Construct a more robust key, e.g., 'Array.prototype.flat'
         const featureName = `Array.prototype.${property.node.name}`;
         if (FIX_MAPPINGS[featureName]) {
-          addFeatureIfUnsupported(featureName, path, features);
+          addFeatureIfUnsupported(featureName, path, features, foundInThisRun);
         }
       }
     },
 
     // Check for language syntax like Optional Chaining (`?.`)
-    OptionalMemberExpression(path: NodePath) {
-      addFeatureIfUnsupported('OptionalChaining', path, features);
+    OptionalMemberExpression(path) {
+      addFeatureIfUnsupported('OptionalChaining', path, features, foundInThisRun);
     },
-    OptionalCallExpression(path: NodePath) {
-      addFeatureIfUnsupported('OptionalChaining', path, features);
+    OptionalCallExpression(path) {
+      addFeatureIfUnsupported('OptionalChaining', path, features, foundInThisRun);
     },
   });
 
@@ -99,11 +109,12 @@ function findUnsupportedFeatures(document: vscode.TextDocument): IUnsupportedFea
  */
 function addFeatureIfUnsupported(
   featureName: string,
-  path: NodePath,
-  features: IUnsupportedFeature[]
+  path: NodePath<any>,
+  features: IUnsupportedFeature[],
+  foundInThisRun: Set<string>
 ) {
-  // Prevent duplicate reporting for the same feature
-  if (features.some(f => f.featureName === featureName)) {
+  // Prevent duplicate reporting for the same feature name in a single run.
+  if (foundInThisRun.has(featureName)) {
     return;
   }
 
@@ -119,12 +130,12 @@ function addFeatureIfUnsupported(
       fix: FIX_MAPPINGS[featureName],
       range,
     });
+    foundInThisRun.add(featureName);
   }
 }
 
 /**
  * Quick Fix Provider that injects polyfills when possible.
- * This class now consumes the results of `findUnsupportedFeatures`.
  */
 export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
   public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix];
@@ -146,7 +157,6 @@ export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
           `DevPulse X: ${suggestion}`,
           vscode.CodeActionKind.QuickFix
         );
-        infoAction.isPreferred = false;
         allActions.push(infoAction);
 
         // Action 2: Provide a polyfill injection, if available.
@@ -168,9 +178,9 @@ export class DevPulseQuickFixProvider implements vscode.CodeActionProvider {
 }
 
 /**
- * Register Quick Fix provider for both JavaScript and TypeScript.
+ * Register Quick Fix provider for relevant languages.
  */
-export function registerQuickFix(context: vscode.ExtensionContext) {
+export function registerQuickFixProvider(context: vscode.ExtensionContext) {
   const languages = ['javascript', 'javascriptreact', 'typescript', 'typescriptreact'];
   
   context.subscriptions.push(
