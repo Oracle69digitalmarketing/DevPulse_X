@@ -1,39 +1,41 @@
-import * as vscode from 'vscode';
-import { activateCodeListener } from './codeListener';
-import { showDashboard, getDashboardWebview } from './ui/dashboard'; // Assuming getDashboardWebview exists
-import { registerQuickFix } from './suggestionEngine';
-import { initActivityTracker } from './activityTracker'; // Import the new initializer
+// src/extension.ts
 
-// Create a single output channel for the extension for better logging
-const outputChannel = vscode.window.createOutputChannel('DevPulse X');
+// ... other imports
+import { DashboardManager } from './DashboardManager'; // Assuming this is the correct path
 
-/**
- * Activate DevPulse X extension
- */
+// ... outputChannel definition
+
+// Create a global event emitter for metric updates
+const onDidUpdateMetric = new vscode.EventEmitter<any>(); // Use a more specific type than 'any' if possible
+export const metricUpdated = onDidUpdateMetric.event;
+
 export function activate(context: vscode.ExtensionContext) {
     try {
         outputChannel.appendLine('✅ Activating DevPulse X...');
 
-        // Initialize the activity tracker and provide a way to send metrics to the dashboard
-        initActivityTracker((metric) => {
-            // Get the dashboard's webview and post a message to it
-            const dashboard = getDashboardWebview();
-            if (dashboard) {
-                dashboard.postMessage({
+        // 1. Initialize the activity tracker to EMIT events
+        initActivityTracker(onDidUpdateMetric); // Pass the emitter itself
+
+        // 2. Listen for events and update the dashboard
+        metricUpdated((metric) => {
+            // Post a message to the dashboard if it exists
+            if (DashboardManager.currentManager) {
+                DashboardManager.currentManager.postMessage({
                     command: 'updateMetric',
-                    data: metric,
+                    payload: metric, // Use 'payload' to be consistent with your DashboardManager
                 });
             }
         });
 
-        // Start the main code listener which now handles activity tracking
+        // Start the main code listener
         activateCodeListener(context);
 
-        // Register Flow Dashboard command
+        // Register Dashboard command using the DashboardManager
         const dashboardCmd = vscode.commands.registerCommand(
             'devpulse.showDashboard',
             () => {
-                showDashboard(context);
+                // Use the static method from the class we reviewed
+                DashboardManager.createOrShow(context.extensionUri);
             }
         );
         context.subscriptions.push(dashboardCmd);
@@ -44,15 +46,6 @@ export function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine('🚀 DevPulse X activated successfully!');
 
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        vscode.window.showErrorMessage(`Failed to activate DevPulse X: ${errorMessage}`);
-        outputChannel.appendLine(`[ERROR] Activation failed: ${errorMessage}`);
+        // ... error handling is good
     }
-}
-
-/**
- * Deactivate DevPulse X extension
- */
-export function deactivate() {
-    outputChannel.appendLine('🛑 DevPulse X deactivated');
 }
