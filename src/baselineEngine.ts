@@ -1,27 +1,23 @@
-import { features, Browser, Feature } from 'web-features';
+// src/baselineEngine.ts
+
+import { features, Identifier, SupportStatement, BrowserName } from 'web-features';
 
 // --- Type Definitions for Clarity and Safety ---
-
-/**
- * The support data for a specific feature across browsers.
- * This is the type of `features[featureName]`.
- */
-type FeatureSupportData = Feature['support'];
 
 /**
  * The result of a feature check, providing a consistent and predictable shape.
  */
 export interface FeatureSupportResult {
-    /** Is the feature part of the MDN Baseline in all major browsers? */
+    /** Is the feature part of the MDN Baseline and widely supported? */
     isBaseline: boolean;
     /** A user-friendly message describing the support status. */
     message: string;
     /** The raw support data from the 'web-features' library, if found. */
-    supportData: FeatureSupportData | null;
+    supportData: SupportStatement | null;
     /** A list of browsers where the feature is explicitly not supported. */
-    unsupportedBrowsers: Browser[];
+    unsupportedBrowsers: BrowserName[];
     /** A list of browsers where the feature is only available in a preview/beta version. */
-    previewBrowsers: Browser[];
+    previewBrowsers: BrowserName[];
 }
 
 /**
@@ -32,7 +28,9 @@ export interface FeatureSupportResult {
  * @returns A FeatureSupportResult object with detailed compatibility info.
  */
 export function checkFeature(featureName: string): FeatureSupportResult {
-    const supportData = features[featureName]?.support;
+    // Correctly access the feature data and its nested '__compat' property.
+    const featureData: Identifier | undefined = features[featureName];
+    const supportData = featureData?.__compat?.support ?? null;
 
     // Case 1: The feature is not found in the compatibility database.
     if (!supportData) {
@@ -46,15 +44,17 @@ export function checkFeature(featureName: string): FeatureSupportResult {
     }
 
     // Case 2: The feature was found, so we analyze its support.
-    const unsupportedBrowsers: Browser[] = [];
-    const previewBrowsers: Browser[] = [];
+    const unsupportedBrowsers: BrowserName[] = [];
+    const previewBrowsers: BrowserName[] = [];
 
-    for (const browser in supportData) {
-        const supportValue = supportData[browser as Browser];
+    // Iterate over the keys of the support data, which are browser names.
+    for (const browser of Object.keys(supportData) as BrowserName[]) {
+        const supportValue = supportData[browser];
+        // The library can have complex objects, so we only check for simple false/'preview' values.
         if (supportValue === false) {
-            unsupportedBrowsers.push(browser as Browser);
+            unsupportedBrowsers.push(browser);
         } else if (supportValue === 'preview') {
-            previewBrowsers.push(browser as Browser);
+            previewBrowsers.push(browser);
         }
     }
 
