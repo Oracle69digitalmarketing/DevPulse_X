@@ -13,11 +13,10 @@ import { getNonce } from './getNonce';
  * @returns A string containing the full HTML for the webview.
  */
 export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.Uri): string {
-  // A nonce is a random number used to allow specific scripts to run, enhancing security.
+  // A nonce is a random number used to allow specific scripts and styles to run.
   const nonce = getNonce();
 
   // Generate URIs for the local script and stylesheet files.
-  // The webview can only access resources through these special URIs.
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
   const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.css'));
 
@@ -28,19 +27,18 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       <meta charset="UTF-8">
       
       <!--
-        Use a Content Security Policy to only allow loading styles from our extension's
-        media directory and only allow scripts that have a specific nonce.
+        Use a Content Security Policy to only allow loading specific scripts and styles.
         This helps prevent cross-site scripting (XSS) attacks.
       -->
       <meta http-equiv="Content-Security-Policy" content="
         default-src 'none';
-        style-src ${webview.cspSource};
+        style-src 'nonce-${nonce}';
         script-src 'nonce-${nonce}';
       ">
       
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       
-      <link href="${styleUri}" rel="stylesheet">
+      <link href="${styleUri}" rel="stylesheet" nonce="${nonce}">
       
       <title>DevPulse X Dashboard</title>
     </head>
