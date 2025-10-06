@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { getWebviewContent } from './getWebviewContent';
-import { DashboardMessage } from '../types'; // Assuming this is the path to your types
+// Correcting the path to be relative to the current directory, as discussed.
+import { DashboardMessage } from './types';
 
 /**
  * Manages the lifecycle and communication of the DevPulse X dashboard webview.
@@ -8,6 +9,9 @@ import { DashboardMessage } from '../types'; // Assuming this is the path to you
  * dashboard exists at a time.
  */
 export class DashboardManager implements vscode.Disposable {
+  /**
+   * Tracks the currently active dashboard panel. Only one panel can be open at a time.
+   */
   public static currentManager: DashboardManager | undefined;
 
   private readonly _panel: vscode.WebviewPanel;
@@ -20,14 +24,14 @@ export class DashboardManager implements vscode.Disposable {
    * @param extensionUri The URI of the extension, needed to create the panel.
    */
   public static createOrShow(extensionUri: vscode.Uri) {
-    // Use the active column or default to Column One
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : vscode.ViewColumn.One;
 
-    // If we already have a panel, just reveal it.
+    // If we already have a panel, reveal it instead of creating a new one.
+    // This uses the public `reveal` method to respect encapsulation.
     if (DashboardManager.currentManager) {
-      DashboardManager.currentManager._panel.reveal(column);
+      DashboardManager.currentManager.reveal(column);
       return;
     }
 
@@ -38,7 +42,9 @@ export class DashboardManager implements vscode.Disposable {
       column,                   // Show in the active column.
       {
         enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'out', 'webview')], // Be specific for security
+        // For security, restrict the webview to only loading content
+        // from a specific directory within your extension.
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
       }
     );
 
@@ -55,12 +61,11 @@ export class DashboardManager implements vscode.Disposable {
     // Listen for when the panel is disposed (e.g., when the user closes it).
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-    // Handle messages from the webview.
+    // Handle messages received from the webview.
     this._panel.webview.onDidReceiveMessage(
       (message: DashboardMessage) => {
         switch (message.command) {
           case 'logMood':
-            // Ensure payload exists before using it
             if (message.payload) {
               vscode.window.showInformationMessage(`Current mood: ${message.payload}`);
             }
@@ -77,6 +82,14 @@ export class DashboardManager implements vscode.Disposable {
   }
 
   /**
+   * Reveals the panel in a specific column, respecting its private nature.
+   * @param column The view column to show the panel in.
+   */
+  public reveal(column?: vscode.ViewColumn) {
+    this._panel.reveal(column);
+  }
+
+  /**
    * Safely posts a message to the webview panel.
    * @param message The message to send to the webview.
    */
@@ -85,18 +98,11 @@ export class DashboardManager implements vscode.Disposable {
   }
 
   /**
-   * Cleans up resources. This method is called when the panel is closed.
+   * Cleans up resources when the panel is closed.
    */
   public dispose() {
-    // 1. Clean up the singleton instance.
     DashboardManager.currentManager = undefined;
-
-    // 2. Dispose of the panel. This will also trigger the onDidDispose event,
-    // but the check in step 1 prevents infinite loops. It's important to
-    // dispose of the panel to release its resources.
     this._panel.dispose();
-
-    // 3. Dispose of all disposables (event listeners, etc.).
     while (this._disposables.length) {
       const d = this._disposables.pop();
       if (d) {
@@ -106,7 +112,7 @@ export class DashboardManager implements vscode.Disposable {
   }
 
   /**
-   * Sets the webview's HTML content.
+   * Sets the webview's HTML content by calling the helper function.
    */
   private _update() {
     this._panel.webview.html = getWebviewContent(this._panel.webview, this._extensionUri);
