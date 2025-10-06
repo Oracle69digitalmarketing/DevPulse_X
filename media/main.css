@@ -1,0 +1,26 @@
+/* media/main.css */
+body {
+    font-family: var(--vscode-font-family);
+    color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-editor-background);
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--vscode-editor-widget-border);
+}
+
+li:first-child {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+strong {
+    color: var(--vscode-gitDecoration-modifiedResourceForeground);
+    text-transform: uppercase;
+    margin-right: 8px;
+}
